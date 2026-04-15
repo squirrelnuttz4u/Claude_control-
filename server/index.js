@@ -26,6 +26,7 @@ app.post('/api/sessions', (req, res) => {
   const sessionId = id || `session-${Date.now()}`;
   try {
     const info = manager.createSession(sessionId, { cols, rows, cwd, command });
+    broadcastSessionList();
     res.status(201).json(info);
   } catch (e) {
     res.status(400).json({ error: e.message });
@@ -34,6 +35,7 @@ app.post('/api/sessions', (req, res) => {
 
 app.delete('/api/sessions/:id', (req, res) => {
   manager.destroySession(req.params.id);
+  broadcastSessionList();
   res.json({ ok: true });
 });
 

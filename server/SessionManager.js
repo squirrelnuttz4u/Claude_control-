@@ -95,6 +95,9 @@ class SessionManager {
   resizeSession(id, cols, rows) {
     const session = this.sessions.get(id);
     if (!session) throw new Error(`Session ${id} not found`);
+    // Clamp to safe range
+    cols = Math.max(1, Math.min(500, Math.floor(Number(cols) || 80)));
+    rows = Math.max(1, Math.min(200, Math.floor(Number(rows) || 24)));
     if (session.state !== 'exited') {
       session.pty.resize(cols, rows);
       session.cols = cols;
@@ -107,12 +110,17 @@ class SessionManager {
     if (!session) throw new Error(`Session ${id} not found`);
     session.subscribers.add(ws);
 
-    // Send buffered output so the client catches up
+    // Send buffered output so the client catches up, capped at 512KB
     if (session.buffer.length > 0) {
+      let replay = session.buffer.join('');
+      const maxReplayBytes = 512 * 1024;
+      if (replay.length > maxReplayBytes) {
+        replay = replay.slice(-maxReplayBytes);
+      }
       this._send(ws, {
         type: 'buffer_replay',
         sessionId: id,
-        data: session.buffer.join(''),
+        data: replay,
       });
     }
 

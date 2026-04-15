@@ -397,6 +397,12 @@ input {
   text-align: center;
 }
 
+.position-indicator {
+  font-size: 11px;
+  color: var(--text-secondary);
+  flex-shrink: 0;
+}
+
 .nav-btn {
   background: var(--bg-card);
   color: var(--text-primary);

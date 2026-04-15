@@ -50,7 +50,7 @@
           terminals[id].clear();
         }
         previewBuffers[id] = '';
-        const previewEl = document.getElementById(`preview-${CSS.escape(id)}`);
+        const previewEl = document.getElementById(`preview-${id}`);
         if (previewEl) previewEl.textContent = '';
       }
       // Re-subscribe to any sessions we were watching
@@ -199,6 +199,7 @@
       if (confirm(`Kill session "${session.id}"?`)) {
         wsSend({ type: 'destroy_session', sessionId: session.id });
         subscribedIds.delete(session.id);
+        delete previewBuffers[session.id];
         if (terminals[session.id]) {
           terminals[session.id].dispose();
           delete terminals[session.id];
@@ -261,6 +262,9 @@
 
     // Update header
     focusedTitle.textContent = sessionId;
+    const posIndex = sessions.findIndex(s => s.id === sessionId);
+    const posEl = document.getElementById('focused-position');
+    posEl.textContent = posIndex >= 0 ? `${posIndex + 1} of ${sessions.length}` : '';
     focusedStatus.textContent = session ? session.state : 'unknown';
     focusedStatus.className = `status-badge ${session ? session.state : ''}`;
 
