@@ -77,6 +77,10 @@ wss.on('connection', (ws) => {
       }
 
       case 'input': {
+        if (typeof msg.data !== 'string') {
+          ws.send(JSON.stringify({ type: 'error', error: 'Input must be a string', sessionId: msg.sessionId }));
+          break;
+        }
         try {
           manager.writeToSession(msg.sessionId, msg.data);
         } catch (e) {

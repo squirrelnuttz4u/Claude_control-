@@ -388,11 +388,17 @@ input {
 #focused-header {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 8px 12px;
+  gap: 6px;
+  padding: 8px 8px;
   background: var(--bg-secondary);
   border-bottom: 1px solid var(--border);
   flex-shrink: 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+#focused-header::-webkit-scrollbar {
+  display: none;
 }
 
 #btn-back {
@@ -463,6 +469,33 @@ input {
 .restart-btn:active {
   background: var(--bg-card-hover);
   border-color: var(--orange);
+}
+
+@media (max-width: 380px) {
+  #focused-header {
+    gap: 4px;
+    padding: 6px 6px;
+  }
+
+  .position-indicator {
+    display: none;
+  }
+
+  .nav-btn, .restart-btn {
+    width: 30px;
+    height: 28px;
+    font-size: 16px;
+  }
+
+  #btn-back {
+    padding: 4px 8px;
+    font-size: 12px;
+  }
+
+  #focused-title {
+    font-size: 12px;
+    min-width: 40px;
+  }
 }
 
 /* Terminal wrapper & container */
