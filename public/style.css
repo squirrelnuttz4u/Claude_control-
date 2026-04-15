@@ -444,11 +444,17 @@ input {
   border-color: var(--orange);
 }
 
-/* Terminal container */
-#terminal-container {
+/* Terminal wrapper & container */
+#terminal-wrapper {
   flex: 1;
   overflow: hidden;
   position: relative;
+}
+
+#terminal-container {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
   background: #000;
 }
 

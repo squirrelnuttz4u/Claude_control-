@@ -92,10 +92,24 @@
   // ── Message Router ──────────────────────────────────────────────────
   function handleMessage(msg) {
     switch (msg.type) {
-      case 'session_list':
+      case 'session_list': {
         sessions = msg.sessions;
+        // Sync subscribedIds: remove stale entries for sessions no longer on server
+        const serverIds = new Set(sessions.map(s => s.id));
+        for (const id of subscribedIds) {
+          if (!serverIds.has(id)) {
+            subscribedIds.delete(id);
+            delete previewBuffers[id];
+            if (terminals[id]) {
+              terminals[id].dispose();
+              delete terminals[id];
+              delete fitAddons[id];
+            }
+          }
+        }
         renderGrid();
         break;
+      }
 
       case 'session_created':
         // list will be refreshed via session_list broadcast
@@ -559,17 +573,27 @@
     return div.innerHTML;
   }
 
+  let activeToast = null;
   function showToast(message, type) {
+    // Dismiss previous toast immediately
+    if (activeToast) {
+      activeToast.remove();
+      activeToast = null;
+    }
     const toast = document.createElement('div');
     toast.className = 'toast toast-' + (type || 'info');
     toast.textContent = message;
     document.body.appendChild(toast);
+    activeToast = toast;
     // Trigger reflow then add visible class for animation
     toast.offsetHeight;
     toast.classList.add('toast-visible');
     setTimeout(() => {
       toast.classList.remove('toast-visible');
-      setTimeout(() => toast.remove(), 300);
+      setTimeout(() => {
+        toast.remove();
+        if (activeToast === toast) activeToast = null;
+      }, 300);
     }, 3000);
   }
 
