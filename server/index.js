@@ -262,35 +262,43 @@ server.listen(PORT, '0.0.0.0', () => {
   console.log(pad('  Open the Network URL on your phone to connect'));
   console.log(`╚${line}╝`);
 
-  if (os.platform() === 'darwin') {
-    // Check macOS firewall state
+  // Platform-specific firewall detection and guidance
+  const { execSync: fwExec } = require('child_process');
+  const platform = os.platform();
+
+  if (platform === 'darwin') {
     let fwBlocking = false;
     try {
-      const { execSync } = require('child_process');
-      const fwState = execSync('/usr/libexec/ApplicationFirewall/socketfilterfw --getglobalstate 2>&1', {
+      const fwState = fwExec('/usr/libexec/ApplicationFirewall/socketfilterfw --getglobalstate 2>&1', {
         encoding: 'utf-8', timeout: 3000,
       });
-      if (fwState.includes('enabled')) {
-        fwBlocking = true;
-      }
+      if (fwState.includes('enabled')) fwBlocking = true;
     } catch {}
 
     if (fwBlocking) {
       console.log('');
       console.log('  \x1b[33m*** macOS Firewall is ON ***\x1b[0m');
       console.log('  Your phone may not be able to connect.');
-      console.log('  Run this command to fix it:');
-      console.log('');
-      console.log('    \x1b[36msudo npm run setup-mac\x1b[0m');
-      console.log('');
-      console.log('  Or manually:');
-      console.log('    \x1b[36msudo /usr/libexec/ApplicationFirewall/socketfilterfw --add $(which node)\x1b[0m');
-      console.log('    \x1b[36msudo /usr/libexec/ApplicationFirewall/socketfilterfw --unblockapp $(which node)\x1b[0m');
-    } else {
-      console.log('');
-      console.log('  macOS firewall: OK (disabled or Node.js allowed)');
+      console.log('  Fix:  \x1b[36msudo npm run setup-mac\x1b[0m');
     }
-    console.log('  Both devices must be on the same Wi-Fi network.');
+  } else if (platform === 'win32') {
+    let fwBlocking = false;
+    try {
+      const fwState = fwExec('netsh advfirewall show currentprofile state', {
+        encoding: 'utf-8', timeout: 5000,
+      });
+      if (fwState.includes('ON')) fwBlocking = true;
+    } catch {}
+
+    if (fwBlocking) {
+      console.log('');
+      console.log('  \x1b[33m*** Windows Firewall is ON ***\x1b[0m');
+      console.log('  Your phone may not be able to connect.');
+      console.log('  Fix (run PowerShell as Administrator):');
+      console.log('    \x1b[36mpowershell -ExecutionPolicy Bypass -File setup-win.ps1\x1b[0m');
+    }
   }
+
+  console.log('  Both devices must be on the same Wi-Fi network.');
   console.log('');
 });

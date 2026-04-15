@@ -3,12 +3,15 @@ const os = require('os');
 const fs = require('fs');
 const EventEmitter = require('events');
 
+const isWin = os.platform() === 'win32';
+
 /**
  * Fallback PTY implementation that works without node-pty.
  *
  * Strategy (in order):
- * 1. Python pty.spawn() - creates a real PTY, cleanest approach
- * 2. macOS `script` command - with stderr suppressed
+ * 1. Python pty.spawn() - creates a real PTY (Unix only, cleanest approach)
+ * 2. macOS/Linux `script` command - with stderr suppressed
+ * 3. Windows: raw child_process.spawn (no PTY, but basic I/O works)
  */
 class FallbackPty extends EventEmitter {
   constructor(shell, args, options) {
@@ -26,12 +29,18 @@ class FallbackPty extends EventEmitter {
     };
 
     const cmd = [shell, ...args];
-    const python = findPython();
 
-    if (python) {
-      this._spawnViaPython(python, cmd, options.cwd, env);
+    if (isWin) {
+      // Windows: raw child_process (node-pty should work on Windows;
+      // this fallback is last resort with no PTY features)
+      this._spawnRaw(cmd, options.cwd, env);
     } else {
-      this._spawnViaScript(cmd, options.cwd, env);
+      const python = findPython();
+      if (python) {
+        this._spawnViaPython(python, cmd, options.cwd, env);
+      } else {
+        this._spawnViaScript(cmd, options.cwd, env);
+      }
     }
 
     this.pid = this._process.pid;
@@ -99,6 +108,23 @@ class FallbackPty extends EventEmitter {
     }
   }
 
+  /**
+   * Windows fallback: raw child_process with no PTY.
+   * Basic stdin/stdout piping. No terminal emulation.
+   */
+  _spawnRaw(cmd, cwd, env) {
+    this._process = spawn(cmd[0], cmd.slice(1), {
+      cwd,
+      env,
+      stdio: ['pipe', 'pipe', 'pipe'],
+      shell: true,
+    });
+    // Forward stderr as well since there's no PTY to merge them
+    this._process.stderr.on('data', (data) => {
+      this.emit('data', data.toString());
+    });
+  }
+
   write(data) {
     if (this._process && this._process.stdin && !this._process.stdin.destroyed) {
       this._process.stdin.write(data);
@@ -108,14 +134,15 @@ class FallbackPty extends EventEmitter {
   resize(cols, rows) {
     this.cols = cols;
     this.rows = rows;
-    if (this._process && this._process.pid && !this._exited) {
+    // SIGWINCH doesn't exist on Windows; only send on Unix
+    if (!isWin && this._process && this._process.pid && !this._exited) {
       try { process.kill(this._process.pid, 'SIGWINCH'); } catch {}
     }
   }
 
   kill(signal) {
     if (this._process && !this._exited) {
-      try { this._process.kill(signal || 'SIGHUP'); } catch {}
+      try { this._process.kill(isWin ? undefined : (signal || 'SIGHUP')); } catch {}
     }
   }
 

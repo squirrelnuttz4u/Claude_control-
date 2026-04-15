@@ -9,9 +9,12 @@ const { TmuxPty, TmuxAttach, listCCTmuxSessions, hasTmux, TMUX_PREFIX } = requir
 // Try to load node-pty; if native addon is broken, we'll use the fallback
 let pty = null;
 let useFallbackPty = false;
+const isWin = os.platform() === 'win32';
 try {
   pty = require('node-pty');
-  const testProc = pty.spawn('/bin/sh', ['-c', 'exit 0'], {
+  const testShell = isWin ? (process.env.COMSPEC || 'cmd.exe') : '/bin/sh';
+  const testArgs = isWin ? ['/c', 'exit 0'] : ['-c', 'exit 0'];
+  const testProc = pty.spawn(testShell, testArgs, {
     name: 'xterm-256color', cols: 10, rows: 10,
     cwd: os.homedir(),
     env: { ...process.env, TERM: 'xterm-256color' },
@@ -115,16 +118,36 @@ class SessionManager {
       throw new Error(`Maximum ${this.maxSessions} sessions reached`);
     }
 
-    // Find a verified shell
-    const shellCandidates = [process.env.SHELL, '/bin/zsh', '/bin/bash', '/bin/sh'].filter(Boolean);
-    let loginShell = '/bin/sh';
-    for (const s of shellCandidates) {
-      try { if (fs.statSync(s).isFile()) { loginShell = s; break; } } catch {}
+    // Find a verified shell (platform-specific)
+    let loginShell, shellArgs;
+    const isWin = os.platform() === 'win32';
+
+    if (isWin) {
+      // On Windows, use cmd.exe or powershell
+      const winShells = [
+        process.env.COMSPEC || 'C:\\Windows\\System32\\cmd.exe',
+        'C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe',
+      ];
+      loginShell = winShells[0];
+      for (const s of winShells) {
+        try { if (fs.existsSync(s)) { loginShell = s; break; } } catch {}
+      }
+      const effectiveCmd = command || this._claudeBinary;
+      // cmd /C runs a command then exits
+      shellArgs = ['/C', effectiveCmd];
+    } else {
+      // Unix: use login shell
+      const shellCandidates = [process.env.SHELL, '/bin/zsh', '/bin/bash', '/bin/sh'].filter(Boolean);
+      loginShell = '/bin/sh';
+      for (const s of shellCandidates) {
+        try { if (fs.statSync(s).isFile()) { loginShell = s; break; } } catch {}
+      }
+      const effectiveCmd = command || this._claudeBinary;
+      shellArgs = ['-l', '-c', effectiveCmd];
     }
 
-    const effectiveCmd = command || this._claudeBinary;
     const shell = loginShell;
-    const args = ['-l', '-c', effectiveCmd];
+    const args = shellArgs;
 
     const fallbackHome = process.env.HOME || os.homedir();
     let defaultCwd = cwd || fallbackHome;

@@ -6,7 +6,8 @@
   "scripts": {
     "start": "node server/index.js",
     "dev": "node server/index.js --dev",
-    "setup-mac": "sudo bash setup-mac.sh"
+    "setup-mac": "sudo bash setup-mac.sh",
+    "setup-win": "powershell -ExecutionPolicy Bypass -File setup-win.ps1"
   },
   "dependencies": {
     "express": "^4.21.0",
