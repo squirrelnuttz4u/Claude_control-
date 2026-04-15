@@ -548,15 +548,21 @@
       if (data.entries.length === 0 && !data.parent) {
         html += '<div style="padding:12px;color:var(--text-secondary);font-size:13px;">No subdirectories</div>';
       }
-      // Select current directory button
-      html += `<button class="dir-select-btn" data-select="true">Use this folder</button>`;
+      // New folder + select buttons
+      html += `<div class="dir-actions">
+        <div class="dir-new-folder-row">
+          <input type="text" id="new-folder-name" class="new-folder-input" placeholder="New folder name..." autocomplete="off">
+          <button class="btn-new-folder" data-mkdir="true">+ Create</button>
+        </div>
+        <button class="dir-select-btn" data-select="true">Use this folder</button>
+      </div>`;
       dirBrowserList.innerHTML = html;
     } catch (e) {
       dirBrowserList.innerHTML = '<div style="padding:12px;color:var(--red);font-size:13px;">Failed to load directory</div>';
     }
   }
 
-  dirBrowserList.addEventListener('click', (e) => {
+  dirBrowserList.addEventListener('click', async (e) => {
     const entry = e.target.closest('.dir-entry');
     if (entry) {
       loadDirectory(entry.dataset.path);
@@ -566,6 +572,32 @@
     if (selectBtn) {
       inputCwd.value = currentBrowsePath;
       dirBrowser.classList.add('hidden');
+      return;
+    }
+    const mkdirBtn = e.target.closest('.btn-new-folder');
+    if (mkdirBtn) {
+      const nameInput = document.getElementById('new-folder-name');
+      const folderName = nameInput ? nameInput.value.trim() : '';
+      if (!folderName) {
+        showToast('Enter a folder name', 'error');
+        return;
+      }
+      try {
+        const resp = await fetch('/api/browse/mkdir', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ parent: currentBrowsePath, name: folderName }),
+        });
+        const result = await resp.json();
+        if (result.ok) {
+          // Navigate into the newly created folder
+          loadDirectory(result.path);
+        } else {
+          showToast(result.error || 'Failed to create folder', 'error');
+        }
+      } catch {
+        showToast('Failed to create folder', 'error');
+      }
     }
   });
 

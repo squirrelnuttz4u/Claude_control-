@@ -29,20 +29,26 @@ class SessionManager {
       throw new Error(`Maximum ${this.maxSessions} sessions reached`);
     }
 
-    // Parse command: always spawn through user's login shell so the
-    // full PATH is available (fixes posix_spawnp on macOS).
-    let shell, args;
-    const loginShell = this._shellEnv.SHELL || process.env.SHELL || '/bin/zsh';
+    // Find a shell binary that actually exists on this system
+    const shellCandidates = [
+      process.env.SHELL,
+      '/bin/zsh',
+      '/bin/bash',
+      '/bin/sh',
+    ].filter(Boolean);
+    let loginShell = '/bin/sh'; // ultimate fallback
+    for (const s of shellCandidates) {
+      try { if (fs.statSync(s).isFile()) { loginShell = s; break; } } catch {}
+    }
+
+    // Build the command to run inside the shell
     const effectiveCmd = command || this._claudeBinary;
 
-    if (effectiveCmd.includes(' ') || !command) {
-      // Run through login shell to inherit PATH, aliases, etc.
-      shell = loginShell;
-      args = ['-l', '-c', effectiveCmd];
-    } else {
-      shell = effectiveCmd;
-      args = [];
-    }
+    // ALWAYS spawn through a verified login shell with -l -i -c
+    // This ensures the user's PATH, aliases, etc. are loaded
+    const shell = loginShell;
+    const args = ['-l', '-c', effectiveCmd];
+
     const fallbackHome = process.env.HOME || os.homedir();
     let defaultCwd = cwd || fallbackHome;
     // Validate cwd exists and is a directory, fall back to HOME
@@ -54,17 +60,26 @@ class SessionManager {
       defaultCwd = fallbackHome;
     }
 
-    const ptyProcess = pty.spawn(shell, args, {
-      name: 'xterm-256color',
-      cols,
-      rows,
-      cwd: defaultCwd,
-      env: {
-        ...this._shellEnv,
-        TERM: 'xterm-256color',
-        COLORTERM: 'truecolor',
-      },
-    });
+    let ptyProcess;
+    try {
+      ptyProcess = pty.spawn(shell, args, {
+        name: 'xterm-256color',
+        cols,
+        rows,
+        cwd: defaultCwd,
+        env: {
+          ...this._shellEnv,
+          TERM: 'xterm-256color',
+          COLORTERM: 'truecolor',
+        },
+      });
+    } catch (spawnErr) {
+      throw new Error(
+        `Failed to spawn "${effectiveCmd}" via ${shell}: ${spawnErr.message}. ` +
+        `Verify the command is installed and try specifying the full path ` +
+        `(e.g. /usr/local/bin/claude or run "which claude" in your terminal).`
+      );
+    }
 
     const session = {
       id,

@@ -68,6 +68,27 @@ app.get('/api/browse', (req, res) => {
   }
 });
 
+// Create a new folder inside the browsed directory
+app.post('/api/browse/mkdir', (req, res) => {
+  const fs = require('fs');
+  const { parent, name } = req.body || {};
+  if (!parent || !name) {
+    return res.status(400).json({ error: 'parent and name are required' });
+  }
+  // Sanitize folder name: no path separators or special chars
+  const safeName = name.replace(/[/\\:*?"<>|]/g, '').trim();
+  if (!safeName) {
+    return res.status(400).json({ error: 'Invalid folder name' });
+  }
+  const fullPath = path.join(parent, safeName);
+  try {
+    fs.mkdirSync(fullPath, { recursive: true });
+    res.json({ ok: true, path: fullPath });
+  } catch (e) {
+    res.status(400).json({ error: `Could not create folder: ${e.message}` });
+  }
+});
+
 app.get('/api/sessions/:id', (req, res) => {
   const info = manager.getSessionInfo(req.params.id);
   if (!info) return res.status(404).json({ error: 'Not found' });

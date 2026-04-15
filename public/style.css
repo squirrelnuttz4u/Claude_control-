@@ -465,11 +465,51 @@ input {
   text-overflow: ellipsis;
 }
 
+.dir-actions {
+  padding: 8px;
+  border-top: 1px solid var(--border);
+}
+
+.dir-new-folder-row {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.new-folder-input {
+  flex: 1;
+  padding: 8px 10px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text-primary);
+  font-size: 13px;
+}
+
+.new-folder-input:focus {
+  border-color: var(--accent);
+}
+
+.btn-new-folder {
+  flex-shrink: 0;
+  padding: 8px 12px;
+  background: var(--bg-card);
+  color: var(--green);
+  border: 1px solid var(--green);
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.btn-new-folder:active {
+  background: var(--green-dim);
+}
+
 .dir-select-btn {
   display: block;
-  width: calc(100% - 16px);
-  margin: 8px;
-  padding: 8px;
+  width: 100%;
+  padding: 10px;
   background: var(--accent);
   color: #fff;
   border-radius: 6px;
