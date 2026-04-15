@@ -109,6 +109,11 @@
           }
         }
         renderGrid();
+        // Auto-unfocus if focused session no longer exists
+        if (focusedSessionId && !serverIds.has(focusedSessionId)) {
+          showToast(`Session "${focusedSessionId}" was terminated`, 'error');
+          unfocusSession();
+        }
         // Auto-focus a pending session (e.g., just created)
         if (pendingFocusId && sessions.some(s => s.id === pendingFocusId)) {
           const id = pendingFocusId;
@@ -541,10 +546,14 @@
     });
   }
 
-  // Escape key to go back to grid
+  // Escape key: close modal if open, or go back to grid
   document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape' && focusedSessionId) {
-      unfocusSession();
+    if (e.key === 'Escape') {
+      if (!modal.classList.contains('hidden')) {
+        modal.classList.add('hidden');
+      } else if (focusedSessionId) {
+        unfocusSession();
+      }
     }
   });
 

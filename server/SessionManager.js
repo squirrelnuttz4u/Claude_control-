@@ -21,8 +21,15 @@ class SessionManager {
       throw new Error(`Maximum ${this.maxSessions} sessions reached`);
     }
 
-    const shell = command || 'claude';
-    const args = command ? [] : [];
+    // Parse command: if it contains spaces/args, run via shell
+    let shell, args;
+    if (command && command.includes(' ')) {
+      shell = process.env.SHELL || '/bin/sh';
+      args = ['-c', command];
+    } else {
+      shell = command || 'claude';
+      args = [];
+    }
     const fallbackHome = process.env.HOME || os.homedir();
     let defaultCwd = cwd || fallbackHome;
     // Validate cwd exists and is a directory, fall back to HOME
@@ -56,7 +63,7 @@ class SessionManager {
       cols,
       rows,
       cwd: defaultCwd,
-      command: shell,
+      command: command || 'claude',
       createdAt: Date.now(),
     };
 
