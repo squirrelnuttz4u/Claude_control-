@@ -5,7 +5,8 @@
   "main": "server/index.js",
   "scripts": {
     "start": "node server/index.js",
-    "dev": "node server/index.js --dev"
+    "dev": "node server/index.js --dev",
+    "setup-mac": "sudo bash setup-mac.sh"
   },
   "dependencies": {
     "express": "^4.21.0",

@@ -253,11 +253,33 @@ server.listen(PORT, '0.0.0.0', () => {
   console.log(`╚${line}╝`);
 
   if (os.platform() === 'darwin') {
-    console.log('');
-    console.log('  macOS: If your phone cannot connect, you may need to');
-    console.log('  allow incoming connections in System Settings:');
-    console.log('    System Settings > Network > Firewall > Options');
-    console.log('    Add Node.js or disable firewall temporarily.');
+    // Check macOS firewall state
+    let fwBlocking = false;
+    try {
+      const { execSync } = require('child_process');
+      const fwState = execSync('/usr/libexec/ApplicationFirewall/socketfilterfw --getglobalstate 2>&1', {
+        encoding: 'utf-8', timeout: 3000,
+      });
+      if (fwState.includes('enabled')) {
+        fwBlocking = true;
+      }
+    } catch {}
+
+    if (fwBlocking) {
+      console.log('');
+      console.log('  \x1b[33m*** macOS Firewall is ON ***\x1b[0m');
+      console.log('  Your phone may not be able to connect.');
+      console.log('  Run this command to fix it:');
+      console.log('');
+      console.log('    \x1b[36msudo npm run setup-mac\x1b[0m');
+      console.log('');
+      console.log('  Or manually:');
+      console.log('    \x1b[36msudo /usr/libexec/ApplicationFirewall/socketfilterfw --add $(which node)\x1b[0m');
+      console.log('    \x1b[36msudo /usr/libexec/ApplicationFirewall/socketfilterfw --unblockapp $(which node)\x1b[0m');
+    } else {
+      console.log('');
+      console.log('  macOS firewall: OK (disabled or Node.js allowed)');
+    }
     console.log('  Both devices must be on the same Wi-Fi network.');
   }
   console.log('');
