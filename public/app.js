@@ -103,6 +103,11 @@
 
       case 'session_restarted':
         showToast(`Session "${msg.session.id}" restarted`, 'info');
+        // Re-focus if this was our pending restart
+        if (pendingRestartId === msg.session.id) {
+          pendingRestartId = null;
+          focusSession(msg.session.id);
+        }
         break;
 
       case 'output':
@@ -144,25 +149,21 @@
       return;
     }
 
-    // Build cards, preserving order
-    const existingIds = new Set(sessions.map(s => s.id));
-    // Remove cards for sessions that no longer exist, and any non-card elements (e.g. empty state)
+    // Build a map of existing cards by session ID
+    const existingCards = new Map();
     for (const el of Array.from(sessionGrid.children)) {
-      if (!el.dataset.sessionId || !existingIds.has(el.dataset.sessionId)) {
-        el.remove();
+      if (el.dataset.sessionId) {
+        existingCards.set(el.dataset.sessionId, el);
       }
     }
 
+    // Clear the grid and rebuild in correct order
+    sessionGrid.innerHTML = '';
+
     sessions.forEach((session, index) => {
-      let card = sessionGrid.querySelector(`[data-session-id="${CSS.escape(session.id)}"]`);
-      if (!card) {
-        card = createCard(session, index);
-        sessionGrid.appendChild(card);
-        // Subscribe to this session for preview data
-        subscribedIds.add(session.id);
-        wsSend({ type: 'subscribe', sessionId: session.id });
-      } else {
-        // Update existing card
+      let card = existingCards.get(session.id);
+      if (card) {
+        // Update existing card metadata
         const numEl = card.querySelector('.card-number');
         if (numEl) numEl.textContent = index + 1;
         const statusEl = card.querySelector('.status-badge');
@@ -170,6 +171,13 @@
           statusEl.textContent = session.state;
           statusEl.className = `status-badge ${session.state}`;
         }
+        sessionGrid.appendChild(card);
+      } else {
+        card = createCard(session, index);
+        sessionGrid.appendChild(card);
+        // Subscribe to this session for preview data
+        subscribedIds.add(session.id);
+        wsSend({ type: 'subscribe', sessionId: session.id });
       }
     });
   }
@@ -342,6 +350,12 @@
   }
 
   function unfocusSession() {
+    // Dispose terminal to stop wasting CPU/memory on invisible output
+    if (focusedSessionId && terminals[focusedSessionId]) {
+      terminals[focusedSessionId].dispose();
+      delete terminals[focusedSessionId];
+      delete fitAddons[focusedSessionId];
+    }
     focusedSessionId = null;
     focusedView.classList.add('hidden');
     gridView.classList.remove('hidden');
@@ -440,12 +454,12 @@
   btnBack.addEventListener('click', unfocusSession);
 
   // Restart session button
+  let pendingRestartId = null;
   document.getElementById('btn-restart-session').addEventListener('click', () => {
     if (!focusedSessionId) return;
     if (confirm(`Restart session "${focusedSessionId}"?`)) {
+      pendingRestartId = focusedSessionId;
       wsSend({ type: 'restart_session', sessionId: focusedSessionId });
-      // Re-focus after restart to pick up new terminal
-      setTimeout(() => focusSession(focusedSessionId), 500);
     }
   });
 

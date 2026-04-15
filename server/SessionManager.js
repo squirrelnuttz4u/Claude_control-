@@ -1,6 +1,7 @@
 const pty = require('node-pty');
 const os = require('os');
 const path = require('path');
+const fs = require('fs');
 
 class SessionManager {
   constructor() {
@@ -22,7 +23,16 @@ class SessionManager {
 
     const shell = command || 'claude';
     const args = command ? [] : [];
-    const defaultCwd = cwd || process.env.HOME || os.homedir();
+    const fallbackHome = process.env.HOME || os.homedir();
+    let defaultCwd = cwd || fallbackHome;
+    // Validate cwd exists and is a directory, fall back to HOME
+    try {
+      if (!fs.statSync(defaultCwd).isDirectory()) {
+        defaultCwd = fallbackHome;
+      }
+    } catch {
+      defaultCwd = fallbackHome;
+    }
 
     const ptyProcess = pty.spawn(shell, args, {
       name: 'xterm-256color',
