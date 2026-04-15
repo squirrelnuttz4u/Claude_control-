@@ -1,19 +1,39 @@
-const pty = require('node-pty');
 const os = require('os');
 const path = require('path');
 const fs = require('fs');
 const { findClaudeBinary, getUserShellEnv } = require('./utils/findClaude');
 const { detectRunningClaudeSessions } = require('./utils/detectExternal');
+const { FallbackPty } = require('./utils/fallbackPty');
+
+// Try to load node-pty; if native addon is broken, we'll use the fallback
+let pty = null;
+let useFallbackPty = false;
+try {
+  pty = require('node-pty');
+  // Test spawn to confirm the native addon actually works
+  const testProc = pty.spawn('/bin/sh', ['-c', 'exit 0'], {
+    name: 'xterm-256color', cols: 10, rows: 10,
+    cwd: os.homedir(),
+    env: { ...process.env, TERM: 'xterm-256color' },
+  });
+  testProc.kill();
+} catch (e) {
+  console.log('  node-pty unavailable:', e.message);
+  console.log('  Using fallback PTY (script-based). Terminal features may be limited.');
+  useFallbackPty = true;
+}
 
 class SessionManager {
   constructor() {
-    this.sessions = new Map(); // id -> { pty, subscribers: Set<ws>, buffer: string[], state }
-    this.externalSessions = []; // detected external claude processes
+    this.sessions = new Map();
+    this.externalSessions = [];
     this.maxSessions = 8;
     this.bufferMaxLines = 5000;
     this._shellEnv = getUserShellEnv();
     this._claudeBinary = findClaudeBinary();
+    this._useFallback = useFallbackPty;
     console.log(`  Claude binary: ${this._claudeBinary}`);
+    console.log(`  PTY backend: ${this._useFallback ? 'fallback (script)' : 'node-pty'}`);
     this.refreshExternal();
     this._externalTimer = setInterval(() => this.refreshExternal(), 10000);
   }
@@ -60,25 +80,39 @@ class SessionManager {
       defaultCwd = fallbackHome;
     }
 
+    const spawnOpts = {
+      name: 'xterm-256color',
+      cols,
+      rows,
+      cwd: defaultCwd,
+      env: {
+        ...this._shellEnv,
+        TERM: 'xterm-256color',
+        COLORTERM: 'truecolor',
+      },
+    };
+
     let ptyProcess;
-    try {
-      ptyProcess = pty.spawn(shell, args, {
-        name: 'xterm-256color',
-        cols,
-        rows,
-        cwd: defaultCwd,
-        env: {
-          ...this._shellEnv,
-          TERM: 'xterm-256color',
-          COLORTERM: 'truecolor',
-        },
-      });
-    } catch (spawnErr) {
-      throw new Error(
-        `Failed to spawn "${effectiveCmd}" via ${shell}: ${spawnErr.message}. ` +
-        `Verify the command is installed and try specifying the full path ` +
-        `(e.g. /usr/local/bin/claude or run "which claude" in your terminal).`
-      );
+    if (!this._useFallback) {
+      // Try node-pty first
+      try {
+        ptyProcess = pty.spawn(shell, args, spawnOpts);
+      } catch (e) {
+        console.log(`  node-pty spawn failed: ${e.message}, switching to fallback`);
+        this._useFallback = true;
+      }
+    }
+
+    if (!ptyProcess) {
+      // Fallback: use script-based PTY
+      try {
+        ptyProcess = new FallbackPty(shell, args, spawnOpts);
+      } catch (spawnErr) {
+        throw new Error(
+          `Failed to start "${effectiveCmd}": ${spawnErr.message}. ` +
+          `Verify the command is installed (run "which claude" in your terminal).`
+        );
+      }
     }
 
     const session = {
