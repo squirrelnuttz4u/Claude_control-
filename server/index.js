@@ -210,16 +210,26 @@ function broadcastSessionList() {
   }
 }
 
-// Graceful shutdown: kill all PTY processes on exit
+// Graceful shutdown: detach from sessions but keep tmux sessions alive
 function shutdown() {
-  console.log('\nShutting down... killing all sessions.');
-  for (const session of manager.listSessions()) {
+  console.log('\nShutting down dashboard server...');
+  const sessions = manager.listSessions().filter(s => s.type !== 'external');
+  const persistent = sessions.filter(s => s.persistent);
+  const ephemeral = sessions.filter(s => !s.persistent);
+
+  // Kill non-persistent sessions
+  for (const session of ephemeral) {
     manager.destroySession(session.id);
   }
+
+  if (persistent.length > 0) {
+    console.log(`  ${persistent.length} tmux session(s) will keep running.`);
+    console.log('  Restart the dashboard to reconnect to them.');
+  }
+
   server.close(() => {
     process.exit(0);
   });
-  // Force exit after 3 seconds if graceful shutdown stalls
   setTimeout(() => process.exit(1), 3000);
 }
 

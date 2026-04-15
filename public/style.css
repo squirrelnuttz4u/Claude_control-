@@ -224,6 +224,11 @@ input {
   text-overflow: ellipsis;
 }
 
+.persist-icon {
+  font-size: 10px;
+  margin-right: 3px;
+}
+
 .card-number {
   width: 20px;
   height: 20px;

@@ -242,9 +242,10 @@
           <span class="status-badge external">detected</span>
         </div>`;
     } else {
+      const persistIcon = session.persistent ? '<span class="persist-icon" title="Persistent (tmux)">&#128274;</span>' : '';
       card.innerHTML = `
         <div class="card-header">
-          <span class="card-title">${escapeHtml(session.id)}</span>
+          <span class="card-title">${persistIcon}${escapeHtml(session.id)}</span>
           <span class="card-number">${index + 1}</span>
         </div>
         <div class="card-preview" id="preview-${session.id}"></div>
