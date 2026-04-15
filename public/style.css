@@ -424,6 +424,25 @@ input {
   border-color: var(--accent);
 }
 
+.restart-btn {
+  background: var(--bg-card);
+  color: var(--orange);
+  font-size: 16px;
+  width: 36px;
+  height: 32px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.restart-btn:active {
+  background: var(--bg-card-hover);
+  border-color: var(--orange);
+}
+
 /* Terminal container */
 #terminal-container {
   flex: 1;

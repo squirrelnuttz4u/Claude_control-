@@ -115,6 +115,20 @@ wss.on('connection', (ws) => {
         break;
       }
 
+      case 'restart_session': {
+        try {
+          const oldInfo = manager.getSessionInfo(msg.sessionId);
+          const opts = oldInfo ? { cols: oldInfo.cols, rows: oldInfo.rows, cwd: oldInfo.cwd, command: oldInfo.command } : {};
+          manager.destroySession(msg.sessionId);
+          const info = manager.createSession(msg.sessionId, opts);
+          broadcastSessionList();
+          ws.send(JSON.stringify({ type: 'session_restarted', session: info }));
+        } catch (e) {
+          ws.send(JSON.stringify({ type: 'error', error: e.message }));
+        }
+        break;
+      }
+
       case 'list_sessions': {
         ws.send(JSON.stringify({
           type: 'session_list',

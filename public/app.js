@@ -101,6 +101,10 @@
         // list will be refreshed via session_list broadcast
         break;
 
+      case 'session_restarted':
+        showToast(`Session "${msg.session.id}" restarted`, 'info');
+        break;
+
       case 'output':
         if (terminals[msg.sessionId]) {
           terminals[msg.sessionId].write(msg.data);
@@ -366,6 +370,8 @@
   function sendInput(data) {
     if (!focusedSessionId) return;
     wsSend({ type: 'input', sessionId: focusedSessionId, data });
+    // Haptic feedback on mobile
+    if (navigator.vibrate) navigator.vibrate(30);
   }
 
   function sendTextInput() {
@@ -432,6 +438,16 @@
 
   // ── Navigation ──────────────────────────────────────────────────────
   btnBack.addEventListener('click', unfocusSession);
+
+  // Restart session button
+  document.getElementById('btn-restart-session').addEventListener('click', () => {
+    if (!focusedSessionId) return;
+    if (confirm(`Restart session "${focusedSessionId}"?`)) {
+      wsSend({ type: 'restart_session', sessionId: focusedSessionId });
+      // Re-focus after restart to pick up new terminal
+      setTimeout(() => focusSession(focusedSessionId), 500);
+    }
+  });
 
   // Prev/Next session navigation in focused view
   document.getElementById('btn-prev-session').addEventListener('click', () => {
