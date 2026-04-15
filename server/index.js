@@ -140,6 +140,22 @@ function broadcastSessionList() {
   }
 }
 
+// Graceful shutdown: kill all PTY processes on exit
+function shutdown() {
+  console.log('\nShutting down... killing all sessions.');
+  for (const session of manager.listSessions()) {
+    manager.destroySession(session.id);
+  }
+  server.close(() => {
+    process.exit(0);
+  });
+  // Force exit after 3 seconds if graceful shutdown stalls
+  setTimeout(() => process.exit(1), 3000);
+}
+
+process.on('SIGINT', shutdown);
+process.on('SIGTERM', shutdown);
+
 server.listen(PORT, '0.0.0.0', () => {
   const interfaces = os.networkInterfaces();
   let lanIP = 'localhost';
@@ -152,14 +168,18 @@ server.listen(PORT, '0.0.0.0', () => {
     }
   }
 
+  const W = 52; // inner width of banner box
+  const pad = (str) => '║' + str.padEnd(W) + '║';
+  const line = '═'.repeat(W);
+
   console.log('');
-  console.log('╔══════════════════════════════════════════════════╗');
-  console.log('║       Claude Control - Remote CLI Dashboard      ║');
-  console.log('╠══════════════════════════════════════════════════╣');
-  console.log(`║  Local:   http://localhost:${PORT}                 ║`);
-  console.log(`║  Network: http://${lanIP}:${PORT}`.padEnd(53) + '║');
-  console.log('║                                                  ║');
-  console.log('║  Open the Network URL on your phone to connect   ║');
-  console.log('╚══════════════════════════════════════════════════╝');
+  console.log(`╔${line}╗`);
+  console.log(pad('       Claude Control - Remote CLI Dashboard      '));
+  console.log(`╠${line}╣`);
+  console.log(pad(`  Local:   http://localhost:${PORT}`));
+  console.log(pad(`  Network: http://${lanIP}:${PORT}`));
+  console.log(pad(''));
+  console.log(pad('  Open the Network URL on your phone to connect'));
+  console.log(`╚${line}╝`);
   console.log('');
 });

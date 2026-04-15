@@ -10,6 +10,9 @@ class SessionManager {
   }
 
   createSession(id, { cols = 120, rows = 30, cwd, command } = {}) {
+    // Sanitize session ID to safe characters only
+    id = id.replace(/[^a-zA-Z0-9_-]/g, '-').substring(0, 64);
+    if (!id) id = `session-${Date.now()}`;
     if (this.sessions.has(id)) {
       throw new Error(`Session ${id} already exists`);
     }

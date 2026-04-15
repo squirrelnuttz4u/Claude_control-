@@ -43,6 +43,16 @@
     ws.onopen = () => {
       reconnectDelay = 1000;
       showConnectionStatus(false);
+      // Clear terminal content and preview buffers before re-subscribing
+      // to avoid duplicate output from buffer replay
+      for (const id of subscribedIds) {
+        if (terminals[id]) {
+          terminals[id].clear();
+        }
+        previewBuffers[id] = '';
+        const previewEl = document.getElementById(`preview-${CSS.escape(id)}`);
+        if (previewEl) previewEl.textContent = '';
+      }
       // Re-subscribe to any sessions we were watching
       for (const id of subscribedIds) {
         wsSend({ type: 'subscribe', sessionId: id });
@@ -111,6 +121,7 @@
 
       case 'error':
         console.error('[server]', msg.error);
+        showToast(msg.error, 'error');
         break;
     }
   }
@@ -131,15 +142,15 @@
 
     // Build cards, preserving order
     const existingIds = new Set(sessions.map(s => s.id));
-    // Remove cards for sessions that no longer exist
+    // Remove cards for sessions that no longer exist, and any non-card elements (e.g. empty state)
     for (const el of Array.from(sessionGrid.children)) {
-      if (el.dataset.sessionId && !existingIds.has(el.dataset.sessionId)) {
+      if (!el.dataset.sessionId || !existingIds.has(el.dataset.sessionId)) {
         el.remove();
       }
     }
 
     sessions.forEach((session, index) => {
-      let card = sessionGrid.querySelector(`[data-session-id="${session.id}"]`);
+      let card = sessionGrid.querySelector(`[data-session-id="${CSS.escape(session.id)}"]`);
       if (!card) {
         card = createCard(session, index);
         sessionGrid.appendChild(card);
@@ -226,7 +237,7 @@
     }
 
     // Update card
-    const card = sessionGrid.querySelector(`[data-session-id="${sessionId}"]`);
+    const card = sessionGrid.querySelector(`[data-session-id="${CSS.escape(sessionId)}"]`);
     if (card) {
       const statusEl = card.querySelector('.status-badge');
       if (statusEl) {
@@ -256,56 +267,59 @@
     gridView.classList.add('hidden');
     focusedView.classList.remove('hidden');
 
-    // Create or reuse terminal
-    if (!terminals[sessionId]) {
-      const term = new Terminal({
-        cursorBlink: true,
-        fontSize: 13,
-        fontFamily: "'SF Mono', 'Cascadia Code', 'Fira Code', Consolas, monospace",
-        theme: {
-          background: '#0d1117',
-          foreground: '#e6edf3',
-          cursor: '#58a6ff',
-          selectionBackground: 'rgba(88,166,255,0.3)',
-          black: '#484f58',
-          red: '#ff7b72',
-          green: '#3fb950',
-          yellow: '#d29922',
-          blue: '#58a6ff',
-          magenta: '#bc8cff',
-          cyan: '#39d353',
-          white: '#b1bac4',
-          brightBlack: '#6e7681',
-          brightRed: '#ffa198',
-          brightGreen: '#56d364',
-          brightYellow: '#e3b341',
-          brightBlue: '#79c0ff',
-          brightMagenta: '#d2a8ff',
-          brightCyan: '#56d364',
-          brightWhite: '#f0f6fc',
-        },
-        scrollback: 5000,
-        convertEol: true,
-        allowProposedApi: true,
-      });
-
-      const fit = new FitAddon.FitAddon();
-      term.loadAddon(fit);
-
-      try {
-        const webLinks = new WebLinksAddon.WebLinksAddon();
-        term.loadAddon(webLinks);
-      } catch (e) {
-        // web links addon is optional
-      }
-
-      terminals[sessionId] = term;
-      fitAddons[sessionId] = fit;
+    // Always dispose old terminal and create fresh one to avoid re-open issues
+    if (terminals[sessionId]) {
+      terminals[sessionId].dispose();
+      delete terminals[sessionId];
+      delete fitAddons[sessionId];
     }
+
+    const term = new Terminal({
+      cursorBlink: true,
+      fontSize: 13,
+      fontFamily: "'SF Mono', 'Cascadia Code', 'Fira Code', Consolas, monospace",
+      theme: {
+        background: '#0d1117',
+        foreground: '#e6edf3',
+        cursor: '#58a6ff',
+        selectionBackground: 'rgba(88,166,255,0.3)',
+        black: '#484f58',
+        red: '#ff7b72',
+        green: '#3fb950',
+        yellow: '#d29922',
+        blue: '#58a6ff',
+        magenta: '#bc8cff',
+        cyan: '#39d353',
+        white: '#b1bac4',
+        brightBlack: '#6e7681',
+        brightRed: '#ffa198',
+        brightGreen: '#56d364',
+        brightYellow: '#e3b341',
+        brightBlue: '#79c0ff',
+        brightMagenta: '#d2a8ff',
+        brightCyan: '#56d364',
+        brightWhite: '#f0f6fc',
+      },
+      scrollback: 5000,
+      convertEol: true,
+      allowProposedApi: true,
+    });
+
+    const fit = new FitAddon.FitAddon();
+    term.loadAddon(fit);
+
+    try {
+      const webLinks = new WebLinksAddon.WebLinksAddon();
+      term.loadAddon(webLinks);
+    } catch (e) {
+      // web links addon is optional
+    }
+
+    terminals[sessionId] = term;
+    fitAddons[sessionId] = fit;
 
     // Clear container and mount terminal
     terminalContainer.innerHTML = '';
-    const term = terminals[sessionId];
     term.open(terminalContainer);
 
     // Fit terminal after a frame so the container has dimensions
@@ -350,8 +364,8 @@
   }
 
   function sendTextInput() {
+    if (!focusedSessionId) return;
     const text = textInput.value;
-    if (!text && !focusedSessionId) return;
     sendInput(text + '\n');
     textInput.value = '';
     textInput.focus();
@@ -454,6 +468,20 @@
     const div = document.createElement('div');
     div.textContent = str;
     return div.innerHTML;
+  }
+
+  function showToast(message, type) {
+    const toast = document.createElement('div');
+    toast.className = 'toast toast-' + (type || 'info');
+    toast.textContent = message;
+    document.body.appendChild(toast);
+    // Trigger reflow then add visible class for animation
+    toast.offsetHeight;
+    toast.classList.add('toast-visible');
+    setTimeout(() => {
+      toast.classList.remove('toast-visible');
+      setTimeout(() => toast.remove(), 300);
+    }, 3000);
   }
 
   function stripAnsi(str) {
