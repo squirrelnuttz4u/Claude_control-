@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="theme-color" content="#0d1117">
+  <title>Claude Control</title>
+
+  <!-- xterm.js from CDN -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@xterm/xterm@5.5.0/css/xterm.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/@xterm/xterm@5.5.0/lib/xterm.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@xterm/addon-fit@0.10.0/lib/addon-fit.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@xterm/addon-web-links@0.11.0/lib/addon-web-links.min.js"></script>
+
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <!-- ============ GRID VIEW ============ -->
+  <div id="grid-view">
+    <header id="grid-header">
+      <h1>Claude Control</h1>
+      <div class="header-actions">
+        <span id="session-count">0 sessions</span>
+        <button id="btn-add-session" title="New Session">+ New</button>
+      </div>
+    </header>
+
+    <div id="session-grid">
+      <!-- Session cards are rendered dynamically -->
+    </div>
+
+    <!-- New session modal -->
+    <div id="new-session-modal" class="modal hidden">
+      <div class="modal-content">
+        <h2>New Claude Session</h2>
+        <label>
+          Session Name
+          <input type="text" id="input-session-name" placeholder="e.g. session-1">
+        </label>
+        <label>
+          Working Directory
+          <input type="text" id="input-session-cwd" placeholder="~ (home directory)">
+        </label>
+        <label>
+          Command (leave empty for claude)
+          <input type="text" id="input-session-cmd" placeholder="claude">
+        </label>
+        <div class="modal-buttons">
+          <button id="btn-modal-cancel" class="btn-secondary">Cancel</button>
+          <button id="btn-modal-create" class="btn-primary">Create</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ FOCUSED VIEW ============ -->
+  <div id="focused-view" class="hidden">
+    <header id="focused-header">
+      <button id="btn-back" title="Back to grid">&larr; Grid</button>
+      <span id="focused-title">session-1</span>
+      <span id="focused-status" class="status-badge running">running</span>
+    </header>
+
+    <div id="terminal-container"></div>
+
+    <!-- Quick-action toolbar -->
+    <div id="action-bar">
+      <div id="quick-actions">
+        <button class="action-btn accept-btn" data-input="y\n" title="Accept (y)">&#10003; Accept</button>
+        <button class="action-btn deny-btn" data-input="n\n" title="Deny (n)">&#10007; Deny</button>
+        <button class="action-btn" data-input="\x03" title="Send Ctrl+C">Ctrl+C</button>
+        <button class="action-btn" data-input="\r" title="Send Enter">Enter</button>
+      </div>
+      <div id="input-row">
+        <input type="text" id="text-input" placeholder="Type a message..." autocomplete="off" autocapitalize="off" spellcheck="false">
+        <button id="btn-send">Send</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
