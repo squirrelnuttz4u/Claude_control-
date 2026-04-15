@@ -109,6 +109,7 @@
           }
         }
         renderGrid();
+        updatePageTitle();
         // Auto-unfocus if focused session no longer exists
         if (focusedSessionId && !serverIds.has(focusedSessionId)) {
           showToast(`Session "${focusedSessionId}" was terminated`, 'error');
@@ -161,6 +162,17 @@
         console.error('[server]', msg.error);
         showToast(msg.error, 'error');
         break;
+    }
+  }
+
+  // ── Page Title ───────────────────────────────────────────────────────
+  function updatePageTitle() {
+    if (focusedSessionId) {
+      document.title = `${focusedSessionId} - Claude Control`;
+    } else if (sessions.length > 0) {
+      document.title = `(${sessions.length}) Claude Control`;
+    } else {
+      document.title = 'Claude Control';
     }
   }
 
@@ -376,6 +388,7 @@
     // Subscribe to make sure we're getting output
     subscribedIds.add(sessionId);
     wsSend({ type: 'subscribe', sessionId });
+    updatePageTitle();
   }
 
   function unfocusSession() {
@@ -388,6 +401,7 @@
     focusedSessionId = null;
     focusedView.classList.add('hidden');
     gridView.classList.remove('hidden');
+    updatePageTitle();
   }
 
   function fitTerminal(sessionId) {
