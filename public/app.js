@@ -14,6 +14,7 @@
   let subscribedIds = new Set();
   let reconnectTimer = null;
   let reconnectDelay = 1000;
+  let pendingFocusId = null;
 
   // ── DOM refs ────────────────────────────────────────────────────────
   const gridView = document.getElementById('grid-view');
@@ -108,11 +109,20 @@
           }
         }
         renderGrid();
+        // Auto-focus a pending session (e.g., just created)
+        if (pendingFocusId && sessions.some(s => s.id === pendingFocusId)) {
+          const id = pendingFocusId;
+          pendingFocusId = null;
+          focusSession(id);
+        }
         break;
       }
 
       case 'session_created':
-        // list will be refreshed via session_list broadcast
+        // Auto-focus the newly created session
+        if (msg.session && msg.session.id) {
+          pendingFocusId = msg.session.id;
+        }
         break;
 
       case 'session_restarted':
@@ -531,6 +541,13 @@
     });
   }
 
+  // Escape key to go back to grid
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && focusedSessionId) {
+      unfocusSession();
+    }
+  });
+
   // ── Resize Handling ─────────────────────────────────────────────────
   let resizeTimeout;
   window.addEventListener('resize', () => {
@@ -552,6 +569,8 @@
   // ── Connection Status Overlay ───────────────────────────────────────
   let statusEl = null;
 
+  const connDot = document.getElementById('connection-dot');
+
   function showConnectionStatus(disconnected) {
     if (!statusEl) {
       statusEl = document.createElement('div');
@@ -561,8 +580,10 @@
     if (disconnected) {
       statusEl.textContent = 'Disconnected — reconnecting...';
       statusEl.className = 'disconnected';
+      if (connDot) connDot.className = 'conn-dot disconnected';
     } else {
       statusEl.className = 'connected'; // fades out via CSS
+      if (connDot) connDot.className = 'conn-dot connected';
     }
   }
 
