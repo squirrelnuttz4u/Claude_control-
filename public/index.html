@@ -68,6 +68,7 @@
     </header>
 
     <div id="terminal-container"></div>
+    <button id="btn-scroll-bottom" class="scroll-bottom-btn hidden" title="Scroll to bottom">&#8595;</button>
 
     <!-- Quick-action toolbar -->
     <div id="action-bar">
@@ -76,6 +77,8 @@
         <button class="action-btn deny-btn" data-input="n\n" title="Deny (n)">&#10007; Deny</button>
         <button class="action-btn" data-input="\x03" title="Send Ctrl+C">Ctrl+C</button>
         <button class="action-btn" data-input="\r" title="Send Enter">Enter</button>
+        <button class="action-btn" data-input="\x04" title="Send Ctrl+D (EOF)">Ctrl+D</button>
+        <button class="action-btn" id="btn-scroll-to-bottom-action" title="Scroll to bottom">&#8595; Bottom</button>
       </div>
       <div id="input-row">
         <input type="text" id="text-input" placeholder="Type a message..." autocomplete="off" autocapitalize="off" spellcheck="false">

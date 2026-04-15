@@ -457,6 +457,30 @@ input {
   height: 100%;
 }
 
+/* ===== Scroll to Bottom ===== */
+.scroll-bottom-btn {
+  position: absolute;
+  bottom: 12px;
+  right: 12px;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: #fff;
+  font-size: 18px;
+  font-weight: 700;
+  z-index: 10;
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+}
+
+.scroll-bottom-btn:active {
+  background: var(--accent-hover);
+}
+
 /* ===== Action Bar ===== */
 #action-bar {
   background: var(--bg-secondary);

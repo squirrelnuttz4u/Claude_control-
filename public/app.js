@@ -403,7 +403,7 @@
     const input = btn.dataset.input;
     if (input !== undefined) {
       // Decode escaped chars
-      const decoded = input.replace(/\\n/g, '\n').replace(/\\r/g, '\r').replace(/\\x03/g, '\x03');
+      const decoded = input.replace(/\\n/g, '\n').replace(/\\r/g, '\r').replace(/\\x03/g, '\x03').replace(/\\x04/g, '\x04');
       sendInput(decoded);
     }
   });
@@ -497,6 +497,25 @@
       navigateSession(dx < 0 ? 1 : -1);
     }
   }, { passive: true });
+
+  // Scroll-to-bottom buttons
+  const btnScrollBottom = document.getElementById('btn-scroll-bottom');
+  const btnScrollAction = document.getElementById('btn-scroll-to-bottom-action');
+
+  function scrollTerminalToBottom() {
+    if (focusedSessionId && terminals[focusedSessionId]) {
+      terminals[focusedSessionId].scrollToBottom();
+    }
+    if (btnScrollBottom) btnScrollBottom.classList.add('hidden');
+  }
+
+  if (btnScrollBottom) btnScrollBottom.addEventListener('click', scrollTerminalToBottom);
+  if (btnScrollAction) {
+    btnScrollAction.addEventListener('click', (e) => {
+      e.stopPropagation();
+      scrollTerminalToBottom();
+    });
+  }
 
   // ── Resize Handling ─────────────────────────────────────────────────
   let resizeTimeout;
