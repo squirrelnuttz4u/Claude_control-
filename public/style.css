@@ -227,6 +227,12 @@ input {
   color: var(--red);
 }
 
+.card-uptime {
+  font-size: 10px;
+  color: var(--text-secondary);
+  font-variant-numeric: tabular-nums;
+}
+
 .btn-destroy {
   background: none;
   color: var(--text-secondary);
@@ -388,6 +394,28 @@ input {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  text-align: center;
+}
+
+.nav-btn {
+  background: var(--bg-card);
+  color: var(--text-primary);
+  font-size: 20px;
+  font-weight: 700;
+  width: 36px;
+  height: 32px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  line-height: 1;
+}
+
+.nav-btn:active {
+  background: var(--bg-card-hover);
+  border-color: var(--accent);
 }
 
 /* Terminal container */

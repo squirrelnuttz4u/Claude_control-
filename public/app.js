@@ -183,6 +183,7 @@
       <div class="card-preview" id="preview-${session.id}"></div>
       <div class="card-footer">
         <span class="status-badge ${session.state}">${session.state}</span>
+        <span class="card-uptime" data-created="${session.createdAt}"></span>
         <button class="btn-destroy" data-destroy="${session.id}" title="Kill session">&times;</button>
       </div>`;
 
@@ -428,6 +429,41 @@
   // ── Navigation ──────────────────────────────────────────────────────
   btnBack.addEventListener('click', unfocusSession);
 
+  // Prev/Next session navigation in focused view
+  document.getElementById('btn-prev-session').addEventListener('click', () => {
+    navigateSession(-1);
+  });
+  document.getElementById('btn-next-session').addEventListener('click', () => {
+    navigateSession(1);
+  });
+
+  function navigateSession(direction) {
+    if (!focusedSessionId || sessions.length < 2) return;
+    const currentIndex = sessions.findIndex(s => s.id === focusedSessionId);
+    if (currentIndex === -1) return;
+    const newIndex = (currentIndex + direction + sessions.length) % sessions.length;
+    focusSession(sessions[newIndex].id);
+  }
+
+  // Swipe gesture detection in focused view
+  let touchStartX = 0;
+  let touchStartY = 0;
+  terminalContainer.addEventListener('touchstart', (e) => {
+    touchStartX = e.touches[0].clientX;
+    touchStartY = e.touches[0].clientY;
+  }, { passive: true });
+
+  terminalContainer.addEventListener('touchend', (e) => {
+    const dx = e.changedTouches[0].clientX - touchStartX;
+    const dy = e.changedTouches[0].clientY - touchStartY;
+    const absDx = Math.abs(dx);
+    const absDy = Math.abs(dy);
+    // Require minimum 60px horizontal swipe, more horizontal than vertical
+    if (absDx > 60 && absDx > absDy * 1.5) {
+      navigateSession(dx < 0 ? 1 : -1);
+    }
+  }, { passive: true });
+
   // ── Resize Handling ─────────────────────────────────────────────────
   let resizeTimeout;
   window.addEventListener('resize', () => {
@@ -491,6 +527,25 @@
               .replace(/\x1b[()][AB012]/g, '')
               .replace(/\x1b[\[\]()#;?]*(?:[0-9]{1,4}(?:;[0-9]{0,4})*)?[0-9A-ORZcf-nqry=><~]/g, '');
   }
+
+  // ── Uptime Ticker ────────────────────────────────────────────────────
+  function formatUptime(ms) {
+    const secs = Math.floor(ms / 1000);
+    if (secs < 60) return `${secs}s`;
+    const mins = Math.floor(secs / 60);
+    if (mins < 60) return `${mins}m`;
+    const hrs = Math.floor(mins / 60);
+    const remMins = mins % 60;
+    return `${hrs}h${remMins > 0 ? remMins + 'm' : ''}`;
+  }
+
+  setInterval(() => {
+    const now = Date.now();
+    document.querySelectorAll('.card-uptime[data-created]').forEach((el) => {
+      const created = parseInt(el.dataset.created, 10);
+      if (created) el.textContent = formatUptime(now - created);
+    });
+  }, 5000);
 
   // ── Boot ────────────────────────────────────────────────────────────
   connect();
