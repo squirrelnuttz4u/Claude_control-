@@ -486,6 +486,7 @@
 
   btnModalCancel.addEventListener('click', () => {
     modal.classList.add('hidden');
+    dirBrowser.classList.add('hidden');
   });
 
   btnModalCreate.addEventListener('click', () => {
@@ -501,7 +502,76 @@
       rows: 30,
     });
     modal.classList.add('hidden');
+    dirBrowser.classList.add('hidden');
   });
+
+  // ── Directory Browser ───────────────────────────────────────────────
+  const btnBrowse = document.getElementById('btn-browse-cwd');
+  const dirBrowser = document.getElementById('dir-browser');
+  const dirBrowserPath = document.getElementById('dir-browser-path');
+  const dirBrowserList = document.getElementById('dir-browser-list');
+  let currentBrowsePath = '';
+
+  btnBrowse.addEventListener('click', () => {
+    const startPath = inputCwd.value.trim() || '';
+    dirBrowser.classList.toggle('hidden');
+    if (!dirBrowser.classList.contains('hidden')) {
+      loadDirectory(startPath || '');
+    }
+  });
+
+  async function loadDirectory(dirPath) {
+    try {
+      const url = '/api/browse' + (dirPath ? '?path=' + encodeURIComponent(dirPath) : '');
+      const resp = await fetch(url);
+      const data = await resp.json();
+      currentBrowsePath = data.path;
+      dirBrowserPath.textContent = data.path;
+      inputCwd.value = data.path;
+
+      let html = '';
+      // Parent directory button
+      if (data.parent && data.parent !== data.path) {
+        html += `<button class="dir-entry dir-up" data-path="${escapeAttr(data.parent)}">
+          <span class="dir-entry-icon">..</span>
+          <span class="dir-entry-name">Parent folder</span>
+        </button>`;
+      }
+      // Directory entries
+      for (const name of data.entries) {
+        const full = data.path.replace(/\/$/, '') + '/' + name;
+        html += `<button class="dir-entry" data-path="${escapeAttr(full)}">
+          <span class="dir-entry-icon">&#128193;</span>
+          <span class="dir-entry-name">${escapeHtml(name)}</span>
+        </button>`;
+      }
+      if (data.entries.length === 0 && !data.parent) {
+        html += '<div style="padding:12px;color:var(--text-secondary);font-size:13px;">No subdirectories</div>';
+      }
+      // Select current directory button
+      html += `<button class="dir-select-btn" data-select="true">Use this folder</button>`;
+      dirBrowserList.innerHTML = html;
+    } catch (e) {
+      dirBrowserList.innerHTML = '<div style="padding:12px;color:var(--red);font-size:13px;">Failed to load directory</div>';
+    }
+  }
+
+  dirBrowserList.addEventListener('click', (e) => {
+    const entry = e.target.closest('.dir-entry');
+    if (entry) {
+      loadDirectory(entry.dataset.path);
+      return;
+    }
+    const selectBtn = e.target.closest('.dir-select-btn');
+    if (selectBtn) {
+      inputCwd.value = currentBrowsePath;
+      dirBrowser.classList.add('hidden');
+    }
+  });
+
+  function escapeAttr(str) {
+    return str.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  }
 
   // Close modal on backdrop click
   modal.addEventListener('click', (e) => {

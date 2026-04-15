@@ -39,6 +39,35 @@ app.delete('/api/sessions/:id', (req, res) => {
   res.json({ ok: true });
 });
 
+// Directory browser API for the "New Session" modal
+app.get('/api/browse', (req, res) => {
+  const fs = require('fs');
+  const dirPath = req.query.path || os.homedir();
+  try {
+    const stat = fs.statSync(dirPath);
+    if (!stat.isDirectory()) {
+      return res.json({ path: path.dirname(dirPath), entries: [] });
+    }
+    const entries = fs.readdirSync(dirPath, { withFileTypes: true })
+      .filter(e => e.isDirectory() && !e.name.startsWith('.'))
+      .map(e => e.name)
+      .sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' }));
+    res.json({ path: dirPath, parent: path.dirname(dirPath), entries });
+  } catch {
+    // Fall back to home dir if path is inaccessible
+    const home = os.homedir();
+    try {
+      const entries = fs.readdirSync(home, { withFileTypes: true })
+        .filter(e => e.isDirectory() && !e.name.startsWith('.'))
+        .map(e => e.name)
+        .sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' }));
+      res.json({ path: home, parent: path.dirname(home), entries });
+    } catch {
+      res.json({ path: home, parent: home, entries: [] });
+    }
+  }
+});
+
 app.get('/api/sessions/:id', (req, res) => {
   const info = manager.getSessionInfo(req.params.id);
   if (!info) return res.status(404).json({ error: 'Not found' });
@@ -201,5 +230,14 @@ server.listen(PORT, '0.0.0.0', () => {
   console.log(pad(''));
   console.log(pad('  Open the Network URL on your phone to connect'));
   console.log(`╚${line}╝`);
+
+  if (os.platform() === 'darwin') {
+    console.log('');
+    console.log('  macOS: If your phone cannot connect, you may need to');
+    console.log('  allow incoming connections in System Settings:');
+    console.log('    System Settings > Network > Firewall > Options');
+    console.log('    Add Node.js or disable firewall temporarily.');
+    console.log('  Both devices must be on the same Wi-Fi network.');
+  }
   console.log('');
 });

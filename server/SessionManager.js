@@ -29,13 +29,18 @@ class SessionManager {
       throw new Error(`Maximum ${this.maxSessions} sessions reached`);
     }
 
-    // Parse command: if it contains spaces/args, run via shell
+    // Parse command: always spawn through user's login shell so the
+    // full PATH is available (fixes posix_spawnp on macOS).
     let shell, args;
-    if (command && command.includes(' ')) {
-      shell = process.env.SHELL || '/bin/sh';
-      args = ['-c', command];
+    const loginShell = this._shellEnv.SHELL || process.env.SHELL || '/bin/zsh';
+    const effectiveCmd = command || this._claudeBinary;
+
+    if (effectiveCmd.includes(' ') || !command) {
+      // Run through login shell to inherit PATH, aliases, etc.
+      shell = loginShell;
+      args = ['-l', '-c', effectiveCmd];
     } else {
-      shell = command || this._claudeBinary;
+      shell = effectiveCmd;
       args = [];
     }
     const fallbackHome = process.env.HOME || os.homedir();

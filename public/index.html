@@ -42,7 +42,14 @@
         </label>
         <label>
           Working Directory
-          <input type="text" id="input-session-cwd" placeholder="~ (home directory)">
+          <div class="cwd-picker">
+            <input type="text" id="input-session-cwd" placeholder="~ (home directory)" readonly>
+            <button type="button" id="btn-browse-cwd" class="btn-browse">Browse</button>
+          </div>
+          <div id="dir-browser" class="dir-browser hidden">
+            <div id="dir-browser-path" class="dir-path"></div>
+            <div id="dir-browser-list" class="dir-list"></div>
+          </div>
         </label>
         <label>
           Command (leave empty for claude)
