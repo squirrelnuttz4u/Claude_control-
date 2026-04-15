@@ -168,6 +168,35 @@ input {
   border-color: var(--accent);
 }
 
+.session-card-external {
+  opacity: 0.6;
+  border-style: dashed;
+  cursor: default;
+}
+
+.session-card-external .card-preview {
+  font-size: 9px;
+  color: var(--text-secondary);
+  opacity: 0.8;
+}
+
+.external-badge {
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  padding: 2px 6px;
+  border-radius: 6px;
+  background: rgba(130, 80, 223, 0.15);
+  color: #bc8cff;
+  flex-shrink: 0;
+}
+
+.status-badge.external {
+  background: rgba(130, 80, 223, 0.15);
+  color: #bc8cff;
+}
+
 .session-card.waiting-input {
   border-color: var(--orange);
   animation: pulse-border 2s infinite;

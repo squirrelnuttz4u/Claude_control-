@@ -216,50 +216,65 @@
       } else {
         card = createCard(session, index);
         sessionGrid.appendChild(card);
-        // Subscribe to this session for preview data
-        subscribedIds.add(session.id);
-        wsSend({ type: 'subscribe', sessionId: session.id });
+        // Subscribe to managed sessions for preview data (not external)
+        if (session.type !== 'external') {
+          subscribedIds.add(session.id);
+          wsSend({ type: 'subscribe', sessionId: session.id });
+        }
       }
     });
   }
 
   function createCard(session, index) {
+    const isExternal = session.type === 'external';
     const card = document.createElement('div');
-    card.className = 'session-card';
+    card.className = isExternal ? 'session-card session-card-external' : 'session-card';
     card.dataset.sessionId = session.id;
 
-    card.innerHTML = `
-      <div class="card-header">
-        <span class="card-title">${escapeHtml(session.id)}</span>
-        <span class="card-number">${index + 1}</span>
-      </div>
-      <div class="card-preview" id="preview-${session.id}"></div>
-      <div class="card-footer">
-        <span class="status-badge ${session.state}">${session.state}</span>
-        <span class="card-uptime" data-created="${session.createdAt}"></span>
-        <button class="btn-destroy" data-destroy="${session.id}" title="Kill session">&times;</button>
-      </div>`;
+    if (isExternal) {
+      card.innerHTML = `
+        <div class="card-header">
+          <span class="card-title">${escapeHtml(session.command || session.id)}</span>
+          <span class="external-badge">External</span>
+        </div>
+        <div class="card-preview">${escapeHtml(session.cwd || 'unknown')}\nPID: ${session.pid || '?'}\n\nRunning outside dashboard.\nStart sessions here for\nfull control.</div>
+        <div class="card-footer">
+          <span class="status-badge external">detected</span>
+        </div>`;
+    } else {
+      card.innerHTML = `
+        <div class="card-header">
+          <span class="card-title">${escapeHtml(session.id)}</span>
+          <span class="card-number">${index + 1}</span>
+        </div>
+        <div class="card-preview" id="preview-${session.id}"></div>
+        <div class="card-footer">
+          <span class="status-badge ${session.state}">${session.state}</span>
+          <span class="card-uptime" data-created="${session.createdAt}"></span>
+          <button class="btn-destroy" data-destroy="${session.id}" title="Kill session">&times;</button>
+        </div>`;
 
-    // Tap card to focus
-    card.addEventListener('click', (e) => {
-      if (e.target.classList.contains('btn-destroy')) return;
-      focusSession(session.id);
-    });
+      // Tap card to focus
+      card.addEventListener('click', (e) => {
+        if (e.target.classList.contains('btn-destroy')) return;
+        focusSession(session.id);
+      });
 
-    // Destroy button
-    card.querySelector('.btn-destroy').addEventListener('click', (e) => {
-      e.stopPropagation();
-      if (confirm(`Kill session "${session.id}"?`)) {
-        wsSend({ type: 'destroy_session', sessionId: session.id });
-        subscribedIds.delete(session.id);
-        delete previewBuffers[session.id];
-        if (terminals[session.id]) {
-          terminals[session.id].dispose();
-          delete terminals[session.id];
-          delete fitAddons[session.id];
+      // Destroy button
+      card.querySelector('.btn-destroy').addEventListener('click', (e) => {
+        e.stopPropagation();
+        if (confirm(`Kill session "${session.id}"?`)) {
+          wsSend({ type: 'destroy_session', sessionId: session.id });
+          subscribedIds.delete(session.id);
+          delete previewBuffers[session.id];
+          if (terminals[session.id]) {
+            terminals[session.id].dispose();
+            delete terminals[session.id];
+            delete fitAddons[session.id];
+          }
         }
-      }
-    });
+      });
+    }
 
     return card;
   }

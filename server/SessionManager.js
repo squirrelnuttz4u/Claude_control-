@@ -2,12 +2,20 @@ const pty = require('node-pty');
 const os = require('os');
 const path = require('path');
 const fs = require('fs');
+const { findClaudeBinary, getUserShellEnv } = require('./utils/findClaude');
+const { detectRunningClaudeSessions } = require('./utils/detectExternal');
 
 class SessionManager {
   constructor() {
     this.sessions = new Map(); // id -> { pty, subscribers: Set<ws>, buffer: string[], state }
+    this.externalSessions = []; // detected external claude processes
     this.maxSessions = 8;
     this.bufferMaxLines = 5000;
+    this._shellEnv = getUserShellEnv();
+    this._claudeBinary = findClaudeBinary();
+    console.log(`  Claude binary: ${this._claudeBinary}`);
+    this.refreshExternal();
+    this._externalTimer = setInterval(() => this.refreshExternal(), 10000);
   }
 
   createSession(id, { cols = 120, rows = 30, cwd, command } = {}) {
@@ -27,7 +35,7 @@ class SessionManager {
       shell = process.env.SHELL || '/bin/sh';
       args = ['-c', command];
     } else {
-      shell = command || 'claude';
+      shell = command || this._claudeBinary;
       args = [];
     }
     const fallbackHome = process.env.HOME || os.homedir();
@@ -47,7 +55,7 @@ class SessionManager {
       rows,
       cwd: defaultCwd,
       env: {
-        ...process.env,
+        ...this._shellEnv,
         TERM: 'xterm-256color',
         COLORTERM: 'truecolor',
       },
@@ -63,7 +71,7 @@ class SessionManager {
       cols,
       rows,
       cwd: defaultCwd,
-      command: command || 'claude',
+      command: command || this._claudeBinary,
       createdAt: Date.now(),
     };
 
@@ -189,10 +197,34 @@ class SessionManager {
     };
   }
 
+  refreshExternal() {
+    // Collect PIDs of our own managed sessions to exclude them
+    const ownPids = [];
+    for (const session of this.sessions.values()) {
+      if (session.pty && session.pty.pid) {
+        ownPids.push(session.pty.pid);
+      }
+    }
+    const detected = detectRunningClaudeSessions(ownPids);
+    this.externalSessions = detected.map(proc => ({
+      id: `external-${proc.pid}`,
+      pid: proc.pid,
+      state: 'external',
+      type: 'external',
+      command: proc.command,
+      cwd: proc.cwd,
+      createdAt: Date.now(),
+    }));
+  }
+
   listSessions() {
     const list = [];
     for (const id of this.sessions.keys()) {
       list.push(this.getSessionInfo(id));
+    }
+    // Append detected external sessions
+    for (const ext of this.externalSessions) {
+      list.push(ext);
     }
     return list;
   }
